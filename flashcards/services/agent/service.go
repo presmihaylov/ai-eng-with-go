@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"flashcards/models"
+	"flashcards/services"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -17,12 +18,19 @@ type Service struct {
 	tools  []AgentTool
 }
 
-func NewService(anthropicAPIKey string) (*Service, error) {
+func NewService(anthropicAPIKey string, noteService *services.NoteService, memoryService *services.MemoryService, knowledgeCheckService *services.KnowledgeCheckService) (*Service, error) {
 	client := anthropic.NewClient(option.WithAPIKey(anthropicAPIKey))
 
 	tools := []AgentTool{
-		WeatherTool{},
-		// TimeTool{}, // Example: easily add more tools here
+		NewListNotesTool(noteService),
+		NewReadNoteTool(noteService),
+		NewGetMemoryTool(memoryService),
+		NewUpdateMemoryTool(memoryService),
+		NewGetCurrentTimeTool(),
+		NewCreateEmptyKnowledgeCheckTool(knowledgeCheckService),
+		NewMarkKnowledgeCheckCompleteTool(knowledgeCheckService),
+		NewGetKnowledgeCheckTool(knowledgeCheckService),
+		NewListKnowledgeChecksTool(knowledgeCheckService),
 	}
 
 	return &Service{
@@ -50,6 +58,11 @@ func (s *Service) ProcessMessage(messages []models.AgentMessage) (*models.AgentR
 		MaxTokens: 4096,
 		Messages:  anthropicMessages,
 		Tools:     toolSpecs,
+		System: []anthropic.TextBlockParam{
+			{
+				Text: AgentSystemPrompt,
+			},
+		},
 	})
 	if err != nil {
 		log.Printf("[ERROR] Failed to call Anthropic API: %v", err)

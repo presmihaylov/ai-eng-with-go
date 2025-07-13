@@ -48,8 +48,24 @@ func main() {
 		log.Fatalf("Failed to initialize document index service: %v", err)
 	}
 
+	memoryRepo, err := db.NewPostgresMemoryRepository(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize memory database: %v", err)
+	}
+	defer memoryRepo.Close()
+
 	noteService := services.NewNoteService(noteRepo)
 	noteHandler := handlers.NewNoteHandler(noteService)
+
+	memoryService := services.NewMemoryService(memoryRepo)
+
+	knowledgeCheckRepo, err := db.NewPostgresKnowledgeCheckRepository(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize knowledge check database: %v", err)
+	}
+	defer knowledgeCheckRepo.Close()
+
+	knowledgeCheckService := services.NewKnowledgeCheckService(knowledgeCheckRepo)
 
 	quizStoreService := services.NewQuizStoreService(quizRepo, docindexService)
 	quizStoreHandler := handlers.NewQuizStoreHandler(quizStoreService)
@@ -57,7 +73,7 @@ func main() {
 	quizService := quiz.NewService(noteService, quizStoreService, cfg.OpenAIAPIKey)
 	quizHandler := handlers.NewQuizHandler(quizService)
 
-	agentService, err := agent.NewService(cfg.AnthropicAPIKey)
+	agentService, err := agent.NewService(cfg.AnthropicAPIKey, noteService, memoryService, knowledgeCheckService)
 	if err != nil {
 		log.Fatalf("Failed to initialize agent service: %v", err)
 	}

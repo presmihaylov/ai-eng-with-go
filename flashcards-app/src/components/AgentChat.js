@@ -6,19 +6,69 @@ import {
   WrenchIcon,
   ChartBarIcon,
   UserIcon,
-  CpuChipIcon
+  CpuChipIcon,
+  BookOpenIcon,
+  AcademicCapIcon,
+  LightBulbIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 import { agentApi } from '../api/flashcardsApi';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 
+// CSS for hiding scrollbars
+const scrollbarHideStyles = `
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+// Inject styles into head
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.type = 'text/css';
+  styleSheet.innerText = scrollbarHideStyles;
+  document.head.appendChild(styleSheet);
+}
+
 const AgentChat = () => {
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   
   // Ref for auto-scrolling
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Loading messages for variety
+  const loadingMessages = {
+    default: [
+      'Thinking through your question...',
+      'Preparing response...',
+      'Analyzing your request...',
+      'Working on your study session...',
+      'Processing your question...',
+      'Getting ready to help...'
+    ],
+    withTools: [
+      'Analyzing notes and concepts...',
+      'Reviewing your study materials...',
+      'Examining note content...',
+      'Processing study topics...',
+      'Organizing information...',
+      'Checking knowledge areas...'
+    ]
+  };
+
+  const getRandomLoadingMessage = (hasToolCalls) => {
+    const messageArray = hasToolCalls ? loadingMessages.withTools : loadingMessages.default;
+    return messageArray[Math.floor(Math.random() * messageArray.length)];
+  };
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
@@ -40,6 +90,8 @@ const AgentChat = () => {
       const shouldContinue = lastMessage?.role === 'tool';
       
       if (shouldContinue) {
+        // Update loading message for tool processing
+        setLoadingMessage(getRandomLoadingMessage(true));
         // Small delay to show the tool results to the user
         setTimeout(() => {
           continueConversation(newMessages);
@@ -68,6 +120,7 @@ const AgentChat = () => {
     setMessages(updatedMessages);
     setCurrentMessage('');
     setLoading(true);
+    setLoadingMessage(getRandomLoadingMessage(false));
 
     try {
       await continueConversation(updatedMessages);
@@ -83,7 +136,7 @@ const AgentChat = () => {
     setCurrentMessage('');
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -102,12 +155,12 @@ const AgentChat = () => {
     };
 
     return (
-      <div key={index} className="bg-orange-50 border border-orange-200 rounded-md p-2 mb-1 last:mb-0">
+      <div key={index} className="bg-indigo-50 border border-indigo-200 rounded-md p-2 mb-1 last:mb-0">
         <div className="flex items-center gap-1.5">
-          <WrenchIcon className="h-3 w-3 text-orange-600" />
-          <span className="text-xs font-medium text-orange-800">{toolCall.name}</span>
-          <span className="text-xs text-orange-600">•</span>
-          <span className="text-xs text-orange-700">{formatArgs(toolCall.arguments)}</span>
+          <WrenchIcon className="h-3 w-3 text-indigo-600" />
+          <span className="text-xs font-medium text-indigo-800">{toolCall.name}</span>
+          <span className="text-xs text-indigo-600">•</span>
+          <span className="text-xs text-indigo-700">{formatArgs(toolCall.arguments)}</span>
         </div>
       </div>
     );
@@ -120,12 +173,12 @@ const AgentChat = () => {
       const toolName = toolCall?.name || 'Unknown Tool';
       
       return (
-        <div key={idx} className="bg-green-50 border border-green-200 rounded-md p-2 mb-1 last:mb-0">
+        <div key={idx} className="bg-emerald-50 border border-emerald-200 rounded-md p-2 mb-1 last:mb-0">
           <div className="flex items-center gap-1.5">
-            <ChartBarIcon className="h-3 w-3 text-green-600" />
-            <span className="text-xs font-medium text-green-800">{toolName}</span>
-            <span className="text-xs text-green-600">→</span>
-            <span className="text-xs text-green-700">{truncateText(result.content, 80)}</span>
+            <ChartBarIcon className="h-3 w-3 text-emerald-600" />
+            <span className="text-xs font-medium text-emerald-800">{toolName}</span>
+            <span className="text-xs text-emerald-600">→</span>
+            <span className="text-xs text-emerald-700">{truncateText(result.content, 80)}</span>
           </div>
         </div>
       );
@@ -158,33 +211,33 @@ const AgentChat = () => {
         <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
           isUser 
             ? 'bg-blue-600 text-white' 
-            : 'bg-gray-800 text-white'
+            : 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white'
         }`}>
           {isUser ? (
             <UserIcon className="h-5 w-5" />
           ) : (
-            <CpuChipIcon className="h-5 w-5" />
+            <AcademicCapIcon className="h-5 w-5" />
           )}
         </div>
         
-        <div className={`flex-1 ${isUser ? 'text-right' : ''}`}>
+        <div className={`flex-1 ${isUser ? 'flex flex-col items-end' : ''}`}>
           <div className={`text-sm text-gray-500 mb-2 ${isUser ? 'text-right' : ''}`}>
-            {isUser ? 'You' : 'AI Assistant'}
+            {isUser ? 'You' : 'System Design Tutor'}
           </div>
           
-          <div className={`inline-block max-w-3xl ${
-            isUser 
-              ? 'bg-blue-600 text-white rounded-2xl rounded-tr-md p-4'
-              : 'bg-gray-100 text-gray-900 rounded-2xl rounded-tl-md p-4'
-          }`}>
-            {message.content && (
+          {message.content && (
+            <div className={`inline-block max-w-3xl ${
+              isUser 
+                ? 'bg-blue-600 text-white rounded-2xl rounded-tr-md px-4 py-2 text-left'
+                : 'bg-gray-100 text-gray-900 rounded-2xl rounded-tl-md px-4 py-2'
+            }`}>
               <div className={`prose prose-sm max-w-none ${
                 isUser ? 'prose-invert' : ''
-              }`}>
+              }`} style={isUser ? { whiteSpace: 'pre-wrap' } : {}}>
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Render tool calls and results below the message */}
           {(message.tool_calls?.length > 0 || toolResults.length > 0) && (
@@ -205,16 +258,18 @@ const AgentChat = () => {
     <div className="max-w-4xl mx-auto px-6">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <CpuChipIcon className="h-6 w-6 text-indigo-600" />
+              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-lg">
+                <AcademicCapIcon className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">AI Assistant</h2>
-                <p className="text-sm text-gray-500">
-                  Intelligent assistant with tool capabilities • Weather information and more
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  System Design Study Assistant
+                </h2>
+                <p className="text-sm text-gray-600 font-medium">
+                  Your personal tutor for mastering system design concepts
                 </p>
               </div>
             </div>
@@ -235,15 +290,14 @@ const AgentChat = () => {
         <div className="p-6">
           {messages.length === 0 ? (
             <div className="text-center py-12">
-              <CpuChipIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h3>
-              <p className="text-gray-500 mb-6">
-                Ask the AI assistant anything - it has access to tools and can help with various tasks.
-              </p>
-              <div className="space-y-2 text-sm text-gray-400">
-                <p><strong>Try:</strong> "What is the weather in New York City?"</p>
-                <p><strong>Try:</strong> "Check weather in NYC and London"</p>
-                <p><strong>Try:</strong> "What is 15 * 7?"</p>
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full mb-4">
+                  <AcademicCapIcon className="h-10 w-10 text-indigo-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Ready to Study System Design?</h3>
+                <p className="text-gray-600 mb-8 max-w-lg mx-auto">
+                  I'm here to help you learn and master system design concepts. Ask me anything about your study materials, request explanations, or test your knowledge.
+                </p>
               </div>
             </div>
           ) : (
@@ -252,15 +306,15 @@ const AgentChat = () => {
               
               {loading && (
                 <div className="flex items-start gap-3 mb-6">
-                  <div className="flex-shrink-0 w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center">
-                    <CpuChipIcon className="h-5 w-5" />
+                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full flex items-center justify-center">
+                    <AcademicCapIcon className="h-5 w-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm text-gray-500 mb-2">AI Assistant</div>
-                    <div className="bg-gray-100 rounded-2xl rounded-tl-md p-4">
+                    <div className="text-sm text-gray-500 mb-2">System Design Tutor</div>
+                    <div className="bg-gray-100 rounded-2xl rounded-tl-md px-4 py-2">
                       <div className="flex items-center gap-2 text-gray-600">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                        <span>{messages.some(m => m.tool_calls?.length > 0) ? 'Processing tools...' : 'Thinking...'}</span>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                        <span>{loadingMessage}</span>
                       </div>
                     </div>
                   </div>
@@ -274,36 +328,42 @@ const AgentChat = () => {
 
         {/* Message Input */}
         <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-end">
             <textarea
               value={currentMessage}
               onChange={(e) => setCurrentMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-              className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows="2"
+              className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[40px] max-h-32 overflow-y-auto scrollbar-hide"
+              rows="1"
+              style={{
+                height: 'auto',
+                minHeight: '40px',
+                maxHeight: '128px',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+              }}
+              onInput={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
+              }}
+              ref={(textarea) => {
+                if (textarea) {
+                  textarea.style.height = 'auto';
+                  textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+                }
+              }}
               disabled={loading}
             />
             <button
               onClick={sendMessage}
               disabled={!currentMessage.trim() || loading}
-              className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              className="flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-2 rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-1 shadow-lg h-10"
             >
               <PaperAirplaneIcon className="h-4 w-4" />
-              Send
+              <span className="text-sm">Send</span>
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Features Info */}
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-        <h3 className="font-medium text-indigo-900 mb-2">✨ Assistant Capabilities</h3>
-        <div className="text-sm text-indigo-800 space-y-1">
-          <p>🌤️ <strong>Weather Information:</strong> Get weather for any city worldwide</p>
-          <p>💬 <strong>General Conversation:</strong> Questions, math, explanations, and more</p>
-          <p>🔄 <strong>Multi-task Requests:</strong> Handle multiple operations in one message</p>
-          <p>🧠 <strong>Context Awareness:</strong> Remembers conversation history</p>
         </div>
       </div>
     </div>
