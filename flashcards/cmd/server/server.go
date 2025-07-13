@@ -9,6 +9,7 @@ import (
 	"flashcards/db"
 	"flashcards/handlers"
 	"flashcards/services"
+	"flashcards/services/agent"
 	"flashcards/services/docindex"
 	"flashcards/services/quiz"
 
@@ -24,6 +25,10 @@ func main() {
 
 	if cfg.PineconeAPIKey == "" {
 		log.Fatal("PINECONE_API_KEY environment variable is required")
+	}
+
+	if cfg.AnthropicAPIKey == "" {
+		log.Fatal("ANTHROPIC_API_KEY environment variable is required")
 	}
 
 	noteRepo, err := db.NewPostgresNoteRepository(cfg.DatabaseURL)
@@ -52,6 +57,12 @@ func main() {
 	quizService := quiz.NewService(noteService, quizStoreService, cfg.OpenAIAPIKey)
 	quizHandler := handlers.NewQuizHandler(quizService)
 
+	agentService, err := agent.NewService(cfg.AnthropicAPIKey)
+	if err != nil {
+		log.Fatalf("Failed to initialize agent service: %v", err)
+	}
+	agentHandler := handlers.NewAgentHandler(agentService)
+
 	router := mux.NewRouter()
 
 	router.Use(corsMiddleware)
@@ -64,6 +75,7 @@ func main() {
 	noteHandler.RegisterRoutes(router)
 	quizStoreHandler.RegisterRoutes(router)
 	quizHandler.RegisterRoutes(router)
+	agentHandler.RegisterRoutes(router)
 
 	router.HandleFunc("/health", healthCheckHandler).Methods("GET")
 

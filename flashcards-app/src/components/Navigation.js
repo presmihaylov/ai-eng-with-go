@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { BookOpenIcon, AcademicCapIcon, HeartIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { BookOpenIcon, AcademicCapIcon, HeartIcon, ChevronDownIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 
 const Navigation = ({ activeTab, setActiveTab }) => {
   const [showOldVersions, setShowOldVersions] = useState(false);
 
   const tabs = [
     { id: 'notes', name: 'Notes', icon: BookOpenIcon },
-    { id: 'interactive', name: 'Interactive Quiz', icon: AcademicCapIcon },
+    { id: 'agent', name: 'Agent', icon: ChatBubbleLeftRightIcon },
   ];
 
   const oldVersions = [
-    { id: 'interactive-old', name: 'Interactive Quiz (old)', icon: AcademicCapIcon },
+    { id: 'interactive', name: 'Interactive Quiz (v2)', icon: AcademicCapIcon },
+    { id: 'interactive-old', name: 'Interactive Quiz (v1)', icon: AcademicCapIcon },
   ];
 
   return (

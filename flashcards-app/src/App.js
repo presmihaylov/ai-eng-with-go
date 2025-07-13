@@ -4,6 +4,7 @@ import Navigation from './components/Navigation';
 import NotesManager from './components/NotesManager';
 import InteractiveQuiz from './components/InteractiveQuiz';
 import QuizV2 from './components/QuizV2';
+import AgentChat from './components/AgentChat';
 
 function App() {
   const [activeTab, setActiveTab] = useState('notes');
@@ -12,6 +13,8 @@ function App() {
     switch (activeTab) {
       case 'notes':
         return <NotesManager />;
+      case 'agent':
+        return <AgentChat />;
       case 'interactive':
         return <QuizV2 />;
       case 'interactive-old':

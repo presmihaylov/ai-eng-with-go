@@ -94,6 +94,10 @@ export const quizV2Api = {
   deleteQuiz: (id) => api.delete(`/quizzes/${id}`)
 };
 
+export const agentApi = {
+  chat: (messages) => api.post('/agent/chat', { messages }),
+};
+
 export const healthApi = {
   check: () => api.get('/health'),
 };

@@ -13,6 +13,7 @@ type Config struct {
 	OpenAIAPIKey      string
 	PineconeAPIKey    string
 	PineconeIndexName string
+	AnthropicAPIKey   string
 }
 
 func Load() *Config {
@@ -26,6 +27,7 @@ func Load() *Config {
 		OpenAIAPIKey:      getEnv("OPENAI_API_KEY"),
 		PineconeAPIKey:    getEnv("PINECONE_API_KEY"),
 		PineconeIndexName: getEnvWithDefault("PINECONE_INDEX_NAME", "flashcards-notes-index-dev"),
+		AnthropicAPIKey:   getEnv("ANTHROPIC_API_KEY"),
 	}
 
 	return config
