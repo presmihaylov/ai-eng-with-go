@@ -212,6 +212,10 @@ func (g GetMemoryTool) Call(ctx context.Context, input string) (string, error) {
 		return "", fmt.Errorf("failed to get memory: %v", err)
 	}
 
+	if memory.MemoryContent == "" {
+		return "(empty)", nil
+	}
+
 	return memory.MemoryContent, nil
 }
 

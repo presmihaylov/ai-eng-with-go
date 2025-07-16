@@ -190,10 +190,6 @@ func (s *Service) convertToAnthropicMessages(messages []models.AgentMessage) []a
 			// Convert tool results to user message with tool result blocks
 			toolResultBlocks := []anthropic.ContentBlockParamUnion{}
 			for _, result := range msg.ToolResults {
-				// Skip tool results with empty content
-				if result.Content == "" {
-					continue
-				}
 				toolResultBlocks = append(toolResultBlocks, anthropic.ContentBlockParamUnion{
 					OfToolResult: &anthropic.ToolResultBlockParam{
 						ToolUseID: result.ToolCallID,
@@ -203,10 +199,7 @@ func (s *Service) convertToAnthropicMessages(messages []models.AgentMessage) []a
 					},
 				})
 			}
-			// Only add tool message if there are tool result blocks
-			if len(toolResultBlocks) > 0 {
-				anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(toolResultBlocks...))
-			}
+			anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(toolResultBlocks...))
 		}
 	}
 
