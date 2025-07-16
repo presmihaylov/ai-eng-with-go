@@ -240,7 +240,7 @@ func (u UpdateMemoryTool) Name() string {
 }
 
 func (u UpdateMemoryTool) Description() string {
-	return "Updates the agent's memory with new content"
+	return "Completely replaces the agent's memory with new content. This overrides the entire memory, so include existing content if you want to keep it."
 }
 
 func (u UpdateMemoryTool) Call(ctx context.Context, input string) (string, error) {
