@@ -99,9 +99,9 @@ func (s *Service) ProcessMessage(messages []models.AgentMessage) (*models.AgentR
 	for _, toolUse := range toolUses {
 		// Convert input to map for our model
 		inputJSON, _ := json.Marshal(toolUse.Input)
-		var inputMap map[string]interface{}
+		var inputMap map[string]any
 		json.Unmarshal(inputJSON, &inputMap)
-		
+
 		toolCall := models.ToolCall{
 			ID:        toolUse.ID,
 			Name:      toolUse.Name,
@@ -117,10 +117,10 @@ func (s *Service) ProcessMessage(messages []models.AgentMessage) (*models.AgentR
 	if len(toolUses) > 0 {
 		for _, toolUse := range toolUses {
 			log.Printf("[INFO] Executing tool: %s with arguments: %v", toolUse.Name, toolUse.Input)
-			
+
 			// Convert input to JSON for tool execution
 			inputJSON, _ := json.Marshal(toolUse.Input)
-			
+
 			result, err := s.executeTool(ctx, toolUse.Name, string(inputJSON))
 			if err != nil {
 				log.Printf("[ERROR] Tool execution failed: %v", err)
@@ -155,18 +155,22 @@ func (s *Service) convertToAnthropicMessages(messages []models.AgentMessage) []a
 	for _, msg := range messages {
 		switch msg.Role {
 		case "user":
+			// Skip user messages with empty content
+			if msg.Content == "" {
+				continue
+			}
 			anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(anthropic.NewTextBlock(msg.Content)))
 		case "assistant":
 			// Build content blocks for assistant message
 			contentBlocks := []anthropic.ContentBlockParamUnion{}
-			
+
 			// Add text content if present
 			if msg.Content != "" {
 				contentBlocks = append(contentBlocks, anthropic.ContentBlockParamUnion{
 					OfText: &anthropic.TextBlockParam{Text: msg.Content},
 				})
 			}
-			
+
 			// Add tool use blocks if present
 			for _, toolCall := range msg.ToolCalls {
 				contentBlocks = append(contentBlocks, anthropic.ContentBlockParamUnion{
@@ -177,12 +181,19 @@ func (s *Service) convertToAnthropicMessages(messages []models.AgentMessage) []a
 					},
 				})
 			}
-			
-			anthropicMessages = append(anthropicMessages, anthropic.NewAssistantMessage(contentBlocks...))
+
+			// Skip assistant messages with no content blocks (except if it's the final message)
+			if len(contentBlocks) > 0 {
+				anthropicMessages = append(anthropicMessages, anthropic.NewAssistantMessage(contentBlocks...))
+			}
 		case "tool":
 			// Convert tool results to user message with tool result blocks
 			toolResultBlocks := []anthropic.ContentBlockParamUnion{}
 			for _, result := range msg.ToolResults {
+				// Skip tool results with empty content
+				if result.Content == "" {
+					continue
+				}
 				toolResultBlocks = append(toolResultBlocks, anthropic.ContentBlockParamUnion{
 					OfToolResult: &anthropic.ToolResultBlockParam{
 						ToolUseID: result.ToolCallID,
@@ -192,7 +203,10 @@ func (s *Service) convertToAnthropicMessages(messages []models.AgentMessage) []a
 					},
 				})
 			}
-			anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(toolResultBlocks...))
+			// Only add tool message if there are tool result blocks
+			if len(toolResultBlocks) > 0 {
+				anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(toolResultBlocks...))
+			}
 		}
 	}
 
@@ -226,15 +240,25 @@ func (s *Service) executeTool(ctx context.Context, toolName, arguments string) (
 
 func (s *Service) logAnthropicRequest(stage string, messages []anthropic.MessageParam, tools []anthropic.ToolUnionParam) {
 	log.Printf("[INFO] ========== Anthropic Request (%s) ==========", stage)
-	
+
 	// Log messages
 	log.Printf("[INFO] Messages (%d total):", len(messages))
 	for i, msg := range messages {
-		log.Printf("[INFO]   [%d] Role: %s", i, msg.Role)
+		contentStr := ""
+		for _, block := range msg.Content {
+			if block.OfText != nil {
+				contentStr += block.OfText.Text
+			} else if block.OfToolUse != nil {
+				contentStr += fmt.Sprintf("[Tool: %s]", block.OfToolUse.Name)
+			} else if block.OfToolResult != nil {
+				contentStr += "[Tool Result]"
+			}
+		}
+		log.Printf("[INFO]   [%d] Role: %s, Content: \"%s\"", i, msg.Role, contentStr)
 	}
-	
+
 	// Log tools if present
-	if tools != nil && len(tools) > 0 {
+	if len(tools) > 0 {
 		log.Printf("[INFO] Available Tools (%d total):", len(tools))
 		for i, tool := range tools {
 			if tool.OfTool != nil {
@@ -244,17 +268,17 @@ func (s *Service) logAnthropicRequest(stage string, messages []anthropic.Message
 	} else {
 		log.Printf("[INFO] No tools provided")
 	}
-	
+
 	log.Printf("[INFO] ================================================")
 }
 
 func (s *Service) logAnthropicResponse(stage string, response *anthropic.Message) {
 	log.Printf("[INFO] ========== Anthropic Response (%s) ==========", stage)
-	
+
 	log.Printf("[INFO] Model: %s", response.Model)
 	log.Printf("[INFO] StopReason: %s", response.StopReason)
 	log.Printf("[INFO] Content blocks (%d total):", len(response.Content))
-	
+
 	toolCallCount := 0
 	for i, block := range response.Content {
 		switch block := block.AsAny().(type) {
@@ -265,12 +289,12 @@ func (s *Service) logAnthropicResponse(stage string, response *anthropic.Message
 			log.Printf("[INFO]   [%d] Tool Use: ID=%s, Name=%s, Input=%v", i, block.ID, block.Name, block.Input)
 		}
 	}
-	
+
 	if toolCallCount > 0 {
 		log.Printf("[INFO] Total tool calls: %d", toolCallCount)
 	} else {
 		log.Printf("[INFO] No tool calls made")
 	}
-	
+
 	log.Printf("[INFO] =================================================")
 }
