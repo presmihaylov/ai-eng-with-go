@@ -14,6 +14,8 @@ type Config struct {
 	PineconeAPIKey    string
 	PineconeIndexName string
 	AnthropicAPIKey   string
+	MCPPort           string
+	MCPAPIKey         string
 }
 
 func Load() *Config {
@@ -28,6 +30,8 @@ func Load() *Config {
 		PineconeAPIKey:    getEnv("PINECONE_API_KEY"),
 		PineconeIndexName: getEnvWithDefault("PINECONE_INDEX_NAME", "flashcards-notes-index-dev"),
 		AnthropicAPIKey:   getEnv("ANTHROPIC_API_KEY"),
+		MCPPort:           getEnvWithDefault("MCP_PORT", "8081"),
+		MCPAPIKey:         getEnvWithDefault("MCP_API_KEY", ""),
 	}
 
 	return config

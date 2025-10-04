@@ -1,13 +1,18 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"flashcards/config"
 	"flashcards/db"
 	"flashcards/handlers"
+	"flashcards/mcp"
 	"flashcards/services"
 	"flashcards/services/agent"
 	"flashcards/services/docindex"
@@ -95,12 +100,54 @@ func main() {
 
 	router.HandleFunc("/health", healthCheckHandler).Methods("GET")
 
-	addr := ":" + cfg.Port
-	fmt.Printf("Server starting on port %s\n", cfg.Port)
+	// Initialize MCP server
+	mcpServer := mcp.NewServer(noteService, memoryService, knowledgeCheckService)
 
-	if err := http.ListenAndServe(addr, router); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	// Create context with cancellation for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Setup signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Start HTTP API server
+	httpAddr := ":" + cfg.Port
+	httpServer := &http.Server{
+		Addr:    httpAddr,
+		Handler: router,
 	}
+
+	go func() {
+		log.Printf("[INFO] Starting HTTP server on port %s", cfg.Port)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("[ERROR] HTTP server failed: %v", err)
+		}
+	}()
+
+	// Start MCP server in goroutine
+	go func() {
+		if err := mcpServer.Run(ctx, cfg.MCPPort, cfg.MCPAPIKey); err != nil {
+			log.Printf("[ERROR] MCP server error: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	<-sigChan
+	log.Println("[INFO] Shutdown signal received, initiating graceful shutdown...")
+
+	// Cancel context to trigger MCP server shutdown
+	cancel()
+
+	// Gracefully shutdown HTTP server
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("[ERROR] HTTP server shutdown error: %v", err)
+	}
+
+	log.Println("[INFO] All servers stopped gracefully")
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
